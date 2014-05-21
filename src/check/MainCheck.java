@@ -6,13 +6,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 import def.MT;
+import def.Simbolo;
 import parse.ParseMT;
 
 public class MainCheck {
+	
+	public static final File fileMT = new File("turing/anbncn.txt");
 
 	public static void main(String[] args) {
 		//Cargamos MT en txt
-		MT test = ParseMT.parseMt(new File("turing/turing1.txt"));
+		MT test = ParseMT.parseMt(fileMT);
 		System.out.println("Introduzca la cadena a comprobar:");
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		String cadena = null;
@@ -22,7 +25,12 @@ public class MainCheck {
 			System.out.println("Error leyendo cadena.");
 			System.exit(1);
 		}
-		System.out.println(test.prodMt(cadena));
+		System.out.println("Cadena aceptada: " + test.prodMt(cadena));
+		System.out.print("Cinta final: ");
+		for (Simbolo s : test.getCinta())
+			if (!s.equals(Simbolo.BLANCO))
+				System.out.print(s);
+		System.out.println();
 	}
 
 }

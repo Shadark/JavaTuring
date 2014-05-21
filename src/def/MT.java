@@ -1,5 +1,6 @@
 package def;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -13,7 +14,7 @@ public class MT {
 	private List<Simbolo> cinta;
 	private int cabeza;
 
-	private boolean traza = false;
+	private static final boolean traza = true;
 
 	public MT(Set<Estado> estados, Estado estado, Set<Estado> finales,
 			Set<Regla> delta) {
@@ -21,10 +22,6 @@ public class MT {
 		this.estado = estado;
 		this.finales = finales;
 		this.delta = delta;
-		cinta = new LinkedList<Simbolo>();
-		//Ya que siempre insertaremos un blanco al principio y al final,
-		//empezamos en la primera posición (posición inicial de la cadena)
-		cabeza = 1;
 	}
 
 	public Set<Estado> getEstados() {
@@ -90,26 +87,34 @@ public class MT {
 	}
 
 	/*
-	 * Avanza la cabeza de la MT según la regla r
+	 * Avanza la MT según la configuración de la máquina config
 	 */
 	
-	private void avanzarCabeza(Regla r) {
-		cinta.set(cabeza, r.getSimFin());
-		estado = r.getEstFin();
+	private void avanzarCabeza(MTConfig config) {
+		Regla r = config.getRegla();
+		int cabeza = config.getCabeza();
+		List<Simbolo> auxCinta = config.getCinta();
+		auxCinta.set(cabeza,r.getSimFin());
+		config.setCinta(auxCinta);
+		config.setEstado(r.getEstFin());
 		switch (r.getAccion()) {
 			case R:
 				cabeza++;
-				if (cabeza == cinta.size())
-					cinta.add(Simbolo.BLANCO);
+				if (cabeza == auxCinta.size())
+					auxCinta.add(Simbolo.BLANCO);
 				break;
 			case L:
 				cabeza--;
-				if (cabeza < 0)
-					cinta.add(0, Simbolo.BLANCO);
+				if (cabeza == 0) {
+					auxCinta.add(0, Simbolo.BLANCO);
+					cabeza++;
+				}
 				break;
 			case N:
 				break;
 		}
+		config.setCabeza(cabeza);
+		config.setCinta(auxCinta);
 		if (traza)
 			imprimirMt();
 	}
@@ -118,8 +123,14 @@ public class MT {
 	 * Genera las producciones de la MT según una cadena de entrada.
 	 */
 
-	public String prodMt(String cintaIni) {
+	public boolean prodMt(String cintaIni) {
 
+		List<MTConfig> producciones = new ArrayList<MTConfig>();
+		
+		cinta = new LinkedList<Simbolo>();
+		//Ya que siempre insertaremos un blanco al principio y al final,
+		//empezamos en la primera posición (posición inicial de la cadena)
+		cabeza = 1;
 		
 		//Añadimos un blanco al principio y al final de la cadena
 		cinta.add(Simbolo.BLANCO);
@@ -131,21 +142,29 @@ public class MT {
 
 		if (traza)
 			imprimirMt();
-
-		//Generamos la lista de posibles producciones
-		List<Regla> reglas = getProds(estado, cinta.get(cabeza));
 		
-		while (!finales.contains(estado) && !reglas.isEmpty()) {
-			for (Regla r: reglas)
-				avanzarCabeza(r);
-			reglas = getProds(estado, cinta.get(cabeza));
+		//Generamos la lista de posibles producciones
+		for (Regla r : getProds(estado, cinta.get(cabeza)))
+			producciones.add(new MTConfig(estado, new LinkedList<Simbolo>(cinta), r, cabeza));
+		
+		//Las producciones se van comprobando por orden
+		while (!producciones.isEmpty()) {
+			MTConfig prod = producciones.get(0);
+			avanzarCabeza(prod);
+			cinta = prod.getCinta();
+			estado = prod.getEstado();
+			cabeza = prod.getCabeza();
+			//Si llegamos a un estado final terminamos
+			if (finales.contains(prod.getEstado())) {
+				return true;
+			} else {
+				producciones.remove(0);
+				for (Regla r : getProds(estado, cinta.get(cabeza)))
+					producciones.add(new MTConfig(estado, new LinkedList<Simbolo>(cinta), r, cabeza));
+			}
 		}
-
-		StringBuilder cintaFin = new StringBuilder();
-		for (Simbolo s : cinta)
-			if (!s.equals(Simbolo.BLANCO))
-				cintaFin.append(s.toString());
-		return new String(cintaFin);
+		
+		return finales.contains(estado);
 	}
 
 	@Override
